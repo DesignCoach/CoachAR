@@ -1,0 +1,1489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>CoachAR Live</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --accent: #f5c800;
+  --accent2: #ff4d1c;
+  --green: #00e87a;
+  --ui-bg: rgba(8,10,8,0.85);
+  --ui-border: rgba(255,255,255,0.13);
+  --text: #f0f0ec;
+  --muted: rgba(240,240,236,0.45);
+  --cone-orange: #ff6b1a;
+  --cone-yellow: #f5c800;
+  --cone-blue: #3a9eff;
+  --cone-red: #ff3a3a;
+  --cone-white: #e8e8e8;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: #000;
+  font-family: 'Barlow', sans-serif;
+  color: var(--text);
+  touch-action: none;
+}
+
+/* ══════════════════════════════
+   PERMISSION SCREEN
+══════════════════════════════ */
+#permission-screen {
+  position: fixed; inset: 0;
+  background: #080a08;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  z-index: 1000;
+  padding: 40px 32px;
+  text-align: center;
+}
+.perm-logo {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 36px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+.perm-logo span { color: var(--text); font-weight: 300; }
+.perm-icon { font-size: 52px; }
+.perm-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.perm-desc { font-size: 14px; color: var(--muted); line-height: 1.6; max-width: 300px; }
+.perm-btn {
+  background: var(--accent);
+  color: #080a08;
+  border: none;
+  border-radius: 12px;
+  padding: 16px 36px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  width: 100%;
+  max-width: 280px;
+  transition: transform 0.1s, background 0.15s;
+}
+.perm-btn:active { transform: scale(0.96); }
+.perm-note { font-size: 11px; color: var(--muted); }
+
+/* ══════════════════════════════
+   CALIBRATION SCREEN
+══════════════════════════════ */
+#calibration-screen {
+  position: fixed; inset: 0;
+  z-index: 900;
+  display: none;
+  flex-direction: column;
+}
+#cal-video-wrap {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  background: #000;
+}
+#cal-video {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+}
+#cal-overlay {
+  position: absolute; inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(0,0,0,0.45);
+  padding: 24px;
+  text-align: center;
+}
+.cal-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.cal-desc { font-size: 13px; color: var(--text); line-height: 1.5; max-width: 280px; }
+
+/* Calibration marker */
+#cal-marker {
+  width: 60px; height: 60px;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  position: relative;
+  animation: calPulse 1.8s infinite;
+}
+#cal-marker::before, #cal-marker::after {
+  content: '';
+  position: absolute;
+  background: var(--accent);
+}
+#cal-marker::before { top: 50%; left: -10px; right: -10px; height: 1px; transform: translateY(-50%); }
+#cal-marker::after  { left: 50%; top: -10px; bottom: -10px; width: 1px; transform: translateX(-50%); }
+@keyframes calPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245,200,0,0.4); }
+  50%       { box-shadow: 0 0 0 14px rgba(245,200,0,0); }
+}
+
+/* Step indicator */
+.cal-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 300px;
+}
+.cal-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(0,0,0,0.5);
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+.cal-step.active { border-color: var(--accent); background: rgba(245,200,0,0.08); }
+.cal-step.done   { border-color: var(--green);  background: rgba(0,232,122,0.06); }
+.step-num {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  border: 1.5px solid var(--muted);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700;
+  flex-shrink: 0;
+}
+.cal-step.active .step-num { border-color: var(--accent); color: var(--accent); }
+.cal-step.done   .step-num { border-color: var(--green);  color: var(--green); background: rgba(0,232,122,0.15); }
+.step-text { font-size: 12px; color: var(--text); }
+
+#cal-action-btn {
+  background: var(--accent);
+  color: #080a08;
+  border: none;
+  border-radius: 10px;
+  padding: 13px 30px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 16px; font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  width: 100%; max-width: 280px;
+  transition: transform 0.1s;
+}
+#cal-action-btn:active { transform: scale(0.96); }
+#cal-skip { font-size: 12px; color: var(--muted); text-decoration: underline; cursor: pointer; margin-top: 4px; }
+
+/* ══════════════════════════════
+   MAIN AR VIEW
+══════════════════════════════ */
+#app {
+  position: fixed; inset: 0;
+  display: none;
+  flex-direction: column;
+}
+
+/* Live camera */
+#video-bg {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+
+/* AR canvas overlay */
+#ar-canvas {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Touch intercept layer */
+#touch-layer {
+  position: absolute; inset: 0;
+  z-index: 20;
+}
+
+/* Scanline + vignette */
+#scanlines {
+  position: absolute; inset: 0; z-index: 15; pointer-events: none;
+  background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.03) 3px, rgba(0,0,0,0.03) 4px);
+}
+#vignette {
+  position: absolute; inset: 0; z-index: 16; pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.55) 100%);
+}
+
+/* ── TOP HUD ── */
+#hud-top {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  padding: calc(var(--safe-top) + 12px) 16px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.75), transparent);
+}
+.logo {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 22px; font-weight: 900;
+  letter-spacing: 0.05em; color: var(--accent);
+}
+.logo span { color: var(--text); font-weight: 300; }
+.hud-right { display: flex; gap: 8px; align-items: center; }
+.badge {
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: 16px;
+  padding: 4px 10px;
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  backdrop-filter: blur(8px);
+}
+.badge.cam { color: var(--green); border-color: rgba(0,232,122,0.3); }
+.badge.cam::before {
+  content: '';
+  display: inline-block;
+  width: 6px; height: 6px;
+  background: var(--green);
+  border-radius: 50%;
+  margin-right: 5px;
+  animation: livePulse 1.4s infinite;
+}
+@keyframes livePulse { 0%,100%{opacity:1}50%{opacity:0.2} }
+
+/* ── HORIZON LINE INDICATOR ── */
+#horizon-hint {
+  position: absolute;
+  z-index: 50;
+  left: 16px; right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+  transition: top 0.3s;
+}
+.horizon-line {
+  flex: 1; height: 1px;
+  background: linear-gradient(to right, transparent, rgba(245,200,0,0.5), transparent);
+}
+.horizon-label {
+  font-size: 9px; font-weight: 700;
+  color: rgba(245,200,0,0.6);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* ── CONE OBJECTS ── */
+.cone-ar {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  z-index: 30;
+  cursor: grab;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: filter 0.12s;
+  touch-action: none;
+}
+.cone-ar:active { cursor: grabbing; filter: brightness(1.4) drop-shadow(0 0 8px currentColor); }
+.cone-svg { transition: transform 0.15s; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.6)); }
+.cone-ar:hover .cone-svg { transform: scale(1.12) translateY(-2px); }
+.cone-shadow {
+  width: 20px; height: 6px;
+  background: rgba(0,0,0,0.4);
+  border-radius: 50%;
+  margin-top: -2px;
+  filter: blur(2px);
+}
+.cone-meta {
+  margin-top: 4px;
+  text-align: center;
+}
+.cone-lbl {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #fff;
+  text-shadow: 0 1px 5px rgba(0,0,0,0.9), 0 0 12px rgba(0,0,0,0.6);
+  line-height: 1;
+}
+.cone-dist-lbl {
+  font-size: 9px; font-weight: 600;
+  color: var(--accent);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+  margin-top: 2px;
+}
+.cone-delete {
+  position: absolute;
+  top: -10px; right: -10px;
+  width: 20px; height: 20px;
+  background: rgba(255,60,60,0.85);
+  border-radius: 50%;
+  font-size: 10px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  z-index: 5;
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.3);
+}
+.cone-ar.edit-mode .cone-delete { display: flex; }
+
+/* Tap ring animation */
+.tap-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  width: 44px; height: 44px;
+  transform: translate(-50%,-50%);
+  animation: tapRing 0.55s ease-out forwards;
+  pointer-events: none;
+  z-index: 60;
+}
+@keyframes tapRing {
+  0%   { transform: translate(-50%,-50%) scale(0.3); opacity: 1; }
+  100% { transform: translate(-50%,-50%) scale(2.5); opacity: 0; }
+}
+
+/* ── SIDE CONTROLS ── */
+#side-left {
+  position: absolute;
+  left: 12px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+#side-right {
+  position: absolute;
+  right: 12px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.fab {
+  width: 46px; height: 46px;
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  transition: background 0.15s, transform 0.1s, border-color 0.15s;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+.fab:active { transform: scale(0.9); }
+.fab.active-mode { background: rgba(245,200,0,0.2); border-color: var(--accent); }
+
+/* Cone color picker */
+.cone-pick {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: var(--ui-bg);
+  border: 2px solid var(--ui-border);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.1s, box-shadow 0.15s;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.4);
+  backdrop-filter: blur(8px);
+}
+.cone-pick:active { transform: scale(0.9); }
+.cone-pick.selected { border-color: #fff; box-shadow: 0 0 0 3px rgba(255,255,255,0.2); }
+.cone-pip {
+  width: 0; height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 16px solid;
+}
+.pick-sep {
+  width: 28px; height: 1px;
+  background: var(--ui-border);
+  margin: 2px 0;
+}
+
+/* ── BOTTOM DRAWER ── */
+#bottom-drawer {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  z-index: 100;
+  background: var(--ui-bg);
+  border-top: 1px solid var(--ui-border);
+  backdrop-filter: blur(20px);
+  border-radius: 20px 20px 0 0;
+  padding-bottom: calc(var(--safe-bottom) + 8px);
+  transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+}
+#drawer-handle {
+  width: 36px; height: 4px;
+  background: var(--ui-border);
+  border-radius: 2px;
+  margin: 10px auto 6px;
+  cursor: pointer;
+}
+#tab-bar {
+  display: flex;
+  border-bottom: 1px solid var(--ui-border);
+  padding: 0 16px;
+}
+.tab-btn {
+  flex: 1; background: none; border: none;
+  color: var(--muted);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 10px 4px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.2s, border-color 0.2s;
+}
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.tab-panel { display: none; padding: 12px 16px; }
+.tab-panel.active { display: block; }
+
+/* Drills */
+#drills-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+}
+.drill-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  padding: 10px 6px;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.2s, background 0.2s, transform 0.1s;
+}
+.drill-card:active { transform: scale(0.95); }
+.drill-card.selected { border-color: var(--accent); background: rgba(245,200,0,0.1); }
+.drill-icon { font-size: 20px; display: block; margin-bottom: 4px; }
+.drill-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  line-height: 1.2;
+}
+.drill-count { font-size: 9px; color: var(--muted); margin-top: 2px; }
+
+/* Measure */
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.stat-row:last-child { border-bottom: none; }
+.stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; }
+.stat-val {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 20px; font-weight: 700; color: var(--accent);
+}
+.stat-val.sm { font-size: 14px; color: var(--text); }
+
+/* Save */
+.save-row { display: flex; gap: 8px; margin-bottom: 10px; }
+.s-input {
+  flex: 1;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  padding: 9px 12px;
+  color: var(--text);
+  font-family: 'Barlow', sans-serif;
+  font-size: 14px;
+  outline: none;
+}
+.s-input:focus { border-color: var(--accent); }
+.btn {
+  background: var(--accent); color: #080a08;
+  border: none; border-radius: 8px;
+  padding: 9px 14px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  cursor: pointer; transition: transform 0.1s;
+}
+.btn:active { transform: scale(0.95); }
+.btn.sec { background: rgba(255,255,255,0.08); color: var(--text); border: 1px solid var(--ui-border); }
+.saved-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  padding: 9px 12px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.saved-item:hover { border-color: rgba(255,255,255,0.22); }
+.si-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 14px; font-weight: 700;
+}
+.si-meta { font-size: 10px; color: var(--muted); margin-top: 1px; }
+.si-load { font-size: 11px; color: var(--accent); font-weight: 600; }
+
+/* Toast */
+#toast {
+  position: absolute;
+  top: 72px; left: 50%; transform: translateX(-50%);
+  background: rgba(8,10,8,0.92);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: 20px;
+  padding: 6px 18px;
+  font-size: 12px; font-weight: 600;
+  letter-spacing: 0.05em;
+  z-index: 200; pointer-events: none;
+  opacity: 0; transition: opacity 0.25s;
+  white-space: nowrap;
+  backdrop-filter: blur(10px);
+}
+#toast.show { opacity: 1; }
+
+/* Calibration indicator in AR */
+#scale-badge {
+  position: absolute;
+  top: 72px; right: 14px;
+  z-index: 100;
+  background: var(--ui-bg);
+  border: 1px solid rgba(0,232,122,0.4);
+  border-radius: 10px;
+  padding: 5px 10px;
+  font-size: 10px; font-weight: 600;
+  color: var(--green);
+  letter-spacing: 0.05em;
+  backdrop-filter: blur(8px);
+  display: none;
+}
+
+/* Edit mode overlay */
+#edit-hint {
+  position: absolute;
+  bottom: 210px; left: 50%; transform: translateX(-50%);
+  background: rgba(255,77,28,0.2);
+  border: 1px solid rgba(255,77,28,0.5);
+  border-radius: 16px;
+  padding: 5px 14px;
+  font-size: 11px; font-weight: 600;
+  color: #ff7a52;
+  letter-spacing: 0.05em;
+  z-index: 100;
+  display: none;
+  white-space: nowrap;
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════
+     PERMISSION SCREEN
+═══════════════════════════ -->
+<div id="permission-screen">
+  <div class="perm-logo">Coach<span>AR</span></div>
+  <div class="perm-icon">📷</div>
+  <div class="perm-title">Camera Access Required</div>
+  <div class="perm-desc">CoachAR uses your camera to overlay AR markers directly on your training field. Your video is never recorded or uploaded.</div>
+  <button class="perm-btn" id="start-camera-btn">Enable Camera</button>
+  <div class="perm-note">Safari will ask for permission — tap Allow</div>
+</div>
+
+<!-- ═══════════════════════════
+     CALIBRATION SCREEN
+═══════════════════════════ -->
+<div id="calibration-screen">
+  <div id="cal-video-wrap">
+    <video id="cal-video" autoplay playsinline muted></video>
+    <div id="cal-overlay">
+      <div class="cal-title">Calibrate Field Scale</div>
+      <div id="cal-marker"></div>
+      <div class="cal-desc" id="cal-desc">Point your camera at the field. Place the crosshair on a known point — like the centre spot or a penalty mark.</div>
+
+      <div class="cal-steps" id="cal-steps">
+        <div class="cal-step active" id="step-1">
+          <div class="step-num">1</div>
+          <div class="step-text">Tap a reference point on the field</div>
+        </div>
+        <div class="cal-step" id="step-2">
+          <div class="step-num">2</div>
+          <div class="step-text">Tap a second point (known distance away)</div>
+        </div>
+        <div class="cal-step" id="step-3">
+          <div class="step-num">3</div>
+          <div class="step-text">Enter the real distance between them</div>
+        </div>
+      </div>
+
+      <div id="cal-dist-input" style="display:none;width:100%;max-width:280px">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px;text-align:center">Distance between your two tapped points:</div>
+        <div style="display:flex;gap:8px">
+          <input id="cal-meters" type="number" min="1" max="100" value="11" step="0.5"
+            style="flex:1;background:rgba(255,255,255,0.08);border:1px solid var(--ui-border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:16px;outline:none;font-family:'Barlow',sans-serif">
+          <span style="color:var(--muted);font-size:13px;align-self:center">metres</span>
+        </div>
+      </div>
+
+      <button class="perm-btn" id="cal-action-btn" style="max-width:280px;font-size:16px;padding:13px 30px">Tap Point 1</button>
+      <div id="cal-skip">Skip calibration (use estimates)</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════
+     MAIN AR APP
+═══════════════════════════ -->
+<div id="app">
+  <!-- Camera feed -->
+  <video id="video-bg" autoplay playsinline muted></video>
+
+  <!-- AR drawing canvas -->
+  <canvas id="ar-canvas"></canvas>
+
+  <!-- Touch layer -->
+  <div id="touch-layer"></div>
+
+  <!-- Overlays -->
+  <div id="scanlines"></div>
+  <div id="vignette"></div>
+
+  <!-- Horizon line hint -->
+  <div id="horizon-hint">
+    <div class="horizon-line"></div>
+    <div class="horizon-label">Ground Plane</div>
+    <div class="horizon-line"></div>
+  </div>
+
+  <!-- Top HUD -->
+  <div id="hud-top">
+    <div class="logo">Coach<span>AR</span></div>
+    <div class="hud-right">
+      <div class="badge cam">Live</div>
+      <div class="badge" id="cone-badge">0 cones</div>
+    </div>
+  </div>
+
+  <!-- Scale badge -->
+  <div id="scale-badge">📐 Calibrated</div>
+
+  <!-- Edit hint -->
+  <div id="edit-hint">✏️ Edit mode — drag or delete cones</div>
+
+  <!-- Cone layer (DOM) -->
+  <div id="cones-layer" style="position:absolute;inset:0;z-index:30;pointer-events:none"></div>
+
+  <!-- Left sidebar: cone colors -->
+  <div id="side-left">
+    <div class="cone-pick selected" data-color="orange" title="Orange">
+      <div class="cone-pip" style="border-bottom-color:var(--cone-orange)"></div>
+    </div>
+    <div class="cone-pick" data-color="yellow">
+      <div class="cone-pip" style="border-bottom-color:var(--cone-yellow)"></div>
+    </div>
+    <div class="cone-pick" data-color="blue">
+      <div class="cone-pip" style="border-bottom-color:var(--cone-blue)"></div>
+    </div>
+    <div class="cone-pick" data-color="red">
+      <div class="cone-pip" style="border-bottom-color:var(--cone-red)"></div>
+    </div>
+    <div class="cone-pick" data-color="white">
+      <div class="cone-pip" style="border-bottom-color:var(--cone-white)"></div>
+    </div>
+  </div>
+
+  <!-- Right sidebar: actions -->
+  <div id="side-right">
+    <div class="fab" id="fab-edit" title="Edit mode">✏️</div>
+    <div class="fab" id="fab-undo" title="Undo">↩</div>
+    <div class="fab" id="fab-clear" title="Clear all">🗑</div>
+    <div class="fab" id="fab-recal" title="Recalibrate">📐</div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast"></div>
+
+  <!-- Bottom Drawer -->
+  <div id="bottom-drawer">
+    <div id="drawer-handle"></div>
+    <div id="tab-bar">
+      <button class="tab-btn active" data-tab="drills">Drills</button>
+      <button class="tab-btn" data-tab="measure">Measure</button>
+      <button class="tab-btn" data-tab="save">Save</button>
+    </div>
+
+    <div class="tab-panel active" id="tab-drills">
+      <div id="drills-grid">
+        <div class="drill-card" data-drill="t-drill"><span class="drill-icon">⚡</span><div class="drill-name">T-Drill</div><div class="drill-count">4 cones</div></div>
+        <div class="drill-card" data-drill="box"><span class="drill-icon">⬜</span><div class="drill-name">Box Drill</div><div class="drill-count">4 cones</div></div>
+        <div class="drill-card" data-drill="slalom"><span class="drill-icon">〰️</span><div class="drill-name">Slalom</div><div class="drill-count">6 cones</div></div>
+        <div class="drill-card" data-drill="diamond"><span class="drill-icon">◆</span><div class="drill-name">Diamond</div><div class="drill-count">4 cones</div></div>
+        <div class="drill-card" data-drill="shooting"><span class="drill-icon">⚽</span><div class="drill-name">Shooting</div><div class="drill-count">5 cones</div></div>
+        <div class="drill-card" data-drill="rondo"><span class="drill-icon">🔄</span><div class="drill-name">Rondo</div><div class="drill-count">8 cones</div></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-measure">
+      <div class="stat-row"><span class="stat-label">Cones placed</span><span class="stat-val" id="s-cones">0</span></div>
+      <div class="stat-row"><span class="stat-label">Total path</span><span class="stat-val" id="s-total">0 m</span></div>
+      <div class="stat-row"><span class="stat-label">Longest segment</span><span class="stat-val sm" id="s-longest">—</span></div>
+      <div class="stat-row"><span class="stat-label">Bounding area</span><span class="stat-val sm" id="s-area">—</span></div>
+      <div class="stat-row"><span class="stat-label">Scale</span><span class="stat-val sm" id="s-scale">Estimated</span></div>
+    </div>
+
+    <div class="tab-panel" id="tab-save">
+      <div class="save-row">
+        <input class="s-input" id="sname" type="text" placeholder="Session name…" value="Tuesday Training">
+        <button class="btn" id="btn-save">Save</button>
+        <button class="btn sec" id="btn-share">Share</button>
+      </div>
+      <div id="saved-list"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  GLOBALS
+// ═══════════════════════════════════════════════
+let stream = null;
+let cones = [];
+let coneId = 0;
+let selectedColor = 'orange';
+let editMode = false;
+let calibrated = false;
+let pxPerMeter = null;   // pixels → metres conversion
+let calPoints = [];       // [{x,y}, {x,y}]
+let calStep = 0;          // 0=idle 1=got-p1 2=got-p2 3=done
+let horizonY = 0.45;      // as fraction of screen height
+let savedSessions = [];
+
+const colorVars = {
+  orange: '#ff6b1a',
+  yellow: '#f5c800',
+  blue:   '#3a9eff',
+  red:    '#ff3a3a',
+  white:  '#e8e8e8'
+};
+
+// ═══════════════════════════════════════════════
+//  CAMERA START
+// ═══════════════════════════════════════════════
+document.getElementById('start-camera-btn').addEventListener('click', async () => {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: 'environment' },
+        width:  { ideal: 1920 },
+        height: { ideal: 1080 }
+      },
+      audio: false
+    });
+    // Attach to both video elements
+    document.getElementById('cal-video').srcObject = stream;
+    document.getElementById('video-bg').srcObject  = stream;
+
+    document.getElementById('permission-screen').style.display = 'none';
+    document.getElementById('calibration-screen').style.display = 'flex';
+    initCalibration();
+  } catch(err) {
+    alert('Camera access denied or unavailable. Please allow camera access in Safari Settings → CoachAR, then reload.');
+    console.error(err);
+  }
+});
+
+// ═══════════════════════════════════════════════
+//  CALIBRATION
+// ═══════════════════════════════════════════════
+function initCalibration() {
+  calStep = 0; calPoints = [];
+  updateCalUI();
+
+  const calVid = document.getElementById('cal-video-wrap');
+  calVid.addEventListener('pointerdown', handleCalTap, { once: false });
+}
+
+function handleCalTap(e) {
+  if (calStep >= 2) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  calPoints.push({ x, y });
+  calStep++;
+
+  // Visual dot
+  const dot = document.createElement('div');
+  dot.style.cssText = `position:absolute;left:${x}px;top:${y}px;width:14px;height:14px;
+    border-radius:50%;background:var(--accent);transform:translate(-50%,-50%);
+    border:2px solid #fff;box-shadow:0 0 0 4px rgba(245,200,0,0.3);z-index:20;pointer-events:none`;
+  dot.className = 'cal-dot';
+  e.currentTarget.appendChild(dot);
+
+  // Draw line between points
+  if (calStep === 2) {
+    const line = document.createElement('div');
+    const dx = calPoints[1].x - calPoints[0].x;
+    const dy = calPoints[1].y - calPoints[0].y;
+    const len = Math.hypot(dx, dy);
+    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+    line.style.cssText = `position:absolute;
+      left:${calPoints[0].x}px;top:${calPoints[0].y}px;
+      width:${len}px;height:1px;
+      background:rgba(245,200,0,0.7);
+      transform-origin:0 0;transform:rotate(${angle}deg);
+      z-index:15;pointer-events:none`;
+    e.currentTarget.appendChild(line);
+  }
+
+  updateCalUI();
+}
+
+function updateCalUI() {
+  const steps = ['step-1','step-2','step-3'].map(id => document.getElementById(id));
+  steps.forEach((s,i) => {
+    s.classList.remove('active','done');
+    if (i < calStep) s.classList.add('done');
+    if (i === calStep) s.classList.add('active');
+  });
+
+  const btn = document.getElementById('cal-action-btn');
+  const distInput = document.getElementById('cal-dist-input');
+
+  if (calStep === 0) {
+    btn.textContent = 'Tap Point 1 on the field';
+    btn.style.display = 'block';
+    distInput.style.display = 'none';
+  } else if (calStep === 1) {
+    btn.textContent = 'Tap Point 2 on the field';
+    btn.style.display = 'block';
+    distInput.style.display = 'none';
+  } else if (calStep === 2) {
+    btn.textContent = 'Confirm Distance';
+    distInput.style.display = 'block';
+  }
+}
+
+document.getElementById('cal-action-btn').addEventListener('click', () => {
+  if (calStep < 2) return; // button acts as label in step 0-1
+  if (calStep === 2) {
+    const meters = parseFloat(document.getElementById('cal-meters').value) || 11;
+    const px = Math.hypot(calPoints[1].x - calPoints[0].x, calPoints[1].y - calPoints[0].y);
+    pxPerMeter = px / meters;
+    calibrated = true;
+    document.getElementById('scale-badge').style.display = 'block';
+    document.getElementById('s-scale').textContent = (pxPerMeter).toFixed(1) + ' px/m';
+    launchApp();
+  }
+});
+
+document.getElementById('cal-skip').addEventListener('click', () => {
+  // Estimate: assume viewport width ≈ 40m
+  calibrated = false;
+  launchApp();
+});
+
+document.getElementById('fab-recal').addEventListener('click', () => {
+  // Go back to calibration
+  document.querySelectorAll('.cal-dot, .cal-dot + div').forEach(e => e.remove());
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('calibration-screen').style.display = 'flex';
+  initCalibration();
+});
+
+// ═══════════════════════════════════════════════
+//  LAUNCH APP
+// ═══════════════════════════════════════════════
+function launchApp() {
+  document.getElementById('calibration-screen').style.display = 'none';
+  const app = document.getElementById('app');
+  app.style.display = 'flex';
+  setupCanvas();
+  setupTouchLayer();
+  positionSidebars();
+  drawARFrame();
+  showToast(calibrated ? '📐 Calibrated — tap field to place cones' : 'Tap field to place cones');
+}
+
+// ═══════════════════════════════════════════════
+//  CANVAS — AR lines + perspective grid
+// ═══════════════════════════════════════════════
+const canvas = document.getElementById('ar-canvas');
+const ctx    = canvas.getContext('2d');
+
+function setupCanvas() {
+  resizeCanvas();
+  window.addEventListener('resize', () => { resizeCanvas(); drawARFrame(); });
+}
+
+function resizeCanvas() {
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+
+function drawARFrame() {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const hy = H * horizonY; // horizon y
+  positionHorizonHint(hy);
+
+  // Perspective ground grid
+  ctx.save();
+  ctx.strokeStyle = 'rgba(245,200,0,0.12)';
+  ctx.lineWidth = 0.8;
+
+  const vp = { x: W/2, y: hy };
+  const cols = 10;
+  for (let i = 0; i <= cols; i++) {
+    const bx = (i / cols) * W;
+    ctx.beginPath();
+    ctx.moveTo(vp.x + (bx - vp.x) * 0.05, hy + 4);
+    ctx.lineTo(bx, H);
+    ctx.stroke();
+  }
+  const rows = 8;
+  for (let j = 1; j <= rows; j++) {
+    const t = j / rows;
+    const tt = t * t;
+    const y = hy + tt * (H - hy);
+    const xSpr = (W * 0.5) * t;
+    ctx.beginPath();
+    ctx.moveTo(W/2 - xSpr, y);
+    ctx.lineTo(W/2 + xSpr, y);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // AR ground plane dots
+  ctx.fillStyle = 'rgba(245,200,0,0.15)';
+  for (let gi=0; gi<7; gi++) for (let gj=0; gj<5; gj++) {
+    const gx = W * 0.08 + gi * W * 0.14;
+    const gy = hy + gj * (H - hy) * 0.22 + 10;
+    ctx.beginPath();
+    ctx.arc(gx, gy, 1.5, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  // Draw lines between cones
+  drawConeLines();
+}
+
+function positionHorizonHint(hy) {
+  const hint = document.getElementById('horizon-hint');
+  hint.style.top = hy + 'px';
+}
+
+function drawConeLines() {
+  if (cones.length < 2) return;
+  const W = canvas.width;
+
+  for (let i = 0; i < cones.length - 1; i++) {
+    const a = cones[i], b = cones[i+1];
+    const ax = parseFloat(a.el.style.left);
+    const ay = parseFloat(a.el.style.top);
+    const bx = parseFloat(b.el.style.left);
+    const by = parseFloat(b.el.style.top);
+
+    // Dashed distance line
+    ctx.save();
+    ctx.setLineDash([6, 5]);
+    ctx.strokeStyle = 'rgba(245,200,0,0.55)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(bx, by);
+    ctx.stroke();
+    ctx.restore();
+
+    // Distance label
+    const mx = (ax + bx) / 2, my = (ay + by) / 2;
+    const dist = pxToMeters(Math.hypot(bx-ax, by-ay));
+    ctx.save();
+    ctx.font = '700 10px "Barlow Condensed", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const label = dist.toFixed(1) + ' m';
+    const tw = ctx.measureText(label).width + 14;
+    ctx.fillStyle = 'rgba(8,10,8,0.75)';
+    roundRect(ctx, mx - tw/2, my - 9, tw, 18, 5);
+    ctx.fill();
+    ctx.fillStyle = '#f5c800';
+    ctx.fillText(label, mx, my);
+    ctx.restore();
+  }
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y);
+  ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+  ctx.lineTo(x+w, y+h-r);
+  ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+  ctx.lineTo(x+r, y+h);
+  ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+  ctx.lineTo(x, y+r);
+  ctx.quadraticCurveTo(x, y, x+r, y);
+  ctx.closePath();
+}
+
+// ═══════════════════════════════════════════════
+//  TOUCH LAYER — tap to place
+// ═══════════════════════════════════════════════
+function setupTouchLayer() {
+  const layer = document.getElementById('touch-layer');
+  layer.addEventListener('pointerdown', (e) => {
+    if (editMode) return;
+    const drawerH = document.getElementById('bottom-drawer').offsetHeight;
+    const topH = 70;
+    if (e.clientY > window.innerHeight - drawerH - 10) return;
+    if (e.clientY < topH) return;
+    placeCone(e.clientX, e.clientY);
+    showTapRing(e.clientX, e.clientY);
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  CONE RENDERING
+// ═══════════════════════════════════════════════
+function placeCone(x, y, color, label) {
+  const id = ++coneId;
+  const col = color || selectedColor;
+  const lbl = label || (col[0].toUpperCase() + id);
+  const hex = colorVars[col];
+
+  // Create DOM cone
+  const el = document.createElement('div');
+  el.className = 'cone-ar';
+  el.id = `cone-${id}`;
+  el.style.left = x + 'px';
+  el.style.top  = y + 'px';
+  el.style.pointerEvents = 'auto';
+
+  // Perspective scale: cones lower on screen appear larger
+  const scale = perspectiveScale(y);
+
+  el.innerHTML = `
+    <div class="cone-delete" data-id="${id}">×</div>
+    ${coneSVG(hex, scale)}
+    <div class="cone-shadow" style="width:${20*scale}px;height:${6*scale}px"></div>
+    <div class="cone-meta">
+      <div class="cone-lbl">${lbl}</div>
+      <div class="cone-dist-lbl" id="cdist-${id}"></div>
+    </div>
+  `;
+
+  // Delete button
+  el.querySelector('.cone-delete').addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+    removeCone(id);
+  });
+
+  // Drag
+  makeDraggable(el, id);
+
+  document.getElementById('cones-layer').appendChild(el);
+
+  const cone = { id, x, y, color: col, label: lbl, el };
+  cones.push(cone);
+
+  drawARFrame();
+  updateStats();
+  updateBadge();
+  return cone;
+}
+
+function coneSVG(hex, scale=1) {
+  const s = Math.round(scale * 24);
+  const h = Math.round(scale * 34);
+  return `<svg class="cone-svg" width="${s}" height="${h}" viewBox="0 0 24 34">
+    <defs>
+      <linearGradient id="cg${hex.slice(1)}" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="${hex}" stop-opacity="0.7"/>
+        <stop offset="40%" stop-color="${hex}"/>
+        <stop offset="100%" stop-color="${hex}" stop-opacity="0.5"/>
+      </linearGradient>
+    </defs>
+    <polygon points="12,0 0,34 24,34" fill="url(#cg${hex.slice(1)})"/>
+    <polygon points="12,0 3,34 21,34" fill="rgba(255,255,255,0.12)"/>
+    <ellipse cx="12" cy="33" rx="8" ry="2" fill="rgba(0,0,0,0.3)"/>
+    <line x1="3" y1="22" x2="21" y2="22" stroke="white" stroke-width="1.2" stroke-opacity="0.4"/>
+  </svg>`;
+}
+
+function perspectiveScale(y) {
+  const H = window.innerHeight;
+  const hy = H * horizonY;
+  const t = Math.max(0, Math.min(1, (y - hy) / (H - hy)));
+  return 0.5 + t * 0.8; // range 0.5 → 1.3
+}
+
+function makeDraggable(el, id) {
+  let dragging = false, ox, oy;
+
+  el.addEventListener('pointerdown', (e) => {
+    if (!editMode) return;
+    e.stopPropagation();
+    dragging = true;
+    ox = e.clientX - parseFloat(el.style.left);
+    oy = e.clientY - parseFloat(el.style.top);
+    el.setPointerCapture(e.pointerId);
+    el.style.zIndex = 50;
+  });
+
+  el.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const nx = e.clientX - ox;
+    const ny = e.clientY - oy;
+    el.style.left = nx + 'px';
+    el.style.top  = ny + 'px';
+    const cone = cones.find(c => c.id === id);
+    if (cone) { cone.x = nx; cone.y = ny; }
+
+    // Update perspective scale
+    const scale = perspectiveScale(ny);
+    const svgEl = el.querySelector('.cone-svg');
+    if (svgEl) {
+      const s = Math.round(scale * 24);
+      const h = Math.round(scale * 34);
+      svgEl.setAttribute('width', s);
+      svgEl.setAttribute('height', h);
+    }
+
+    drawARFrame();
+    updateStats();
+  });
+
+  el.addEventListener('pointerup', () => {
+    dragging = false;
+    el.style.zIndex = '';
+  });
+}
+
+function removeCone(id) {
+  const idx = cones.findIndex(c => c.id === id);
+  if (idx === -1) return;
+  cones[idx].el.remove();
+  cones.splice(idx, 1);
+  drawARFrame();
+  updateStats();
+  updateBadge();
+}
+
+// ═══════════════════════════════════════════════
+//  VISUAL FEEDBACK
+// ═══════════════════════════════════════════════
+function showTapRing(x, y) {
+  const ring = document.createElement('div');
+  ring.className = 'tap-ring';
+  ring.style.left = x + 'px';
+  ring.style.top  = y + 'px';
+  document.getElementById('app').appendChild(ring);
+  setTimeout(() => ring.remove(), 600);
+}
+
+// ═══════════════════════════════════════════════
+//  SIDEBAR POSITIONING
+// ═══════════════════════════════════════════════
+function positionSidebars() {
+  const drawerH = document.getElementById('bottom-drawer').offsetHeight;
+  const mid = (window.innerHeight - drawerH) / 2;
+  document.getElementById('side-left').style.top  = mid + 'px';
+  document.getElementById('side-right').style.top = mid + 'px';
+  document.getElementById('side-left').style.transform  = 'translateY(-50%)';
+  document.getElementById('side-right').style.transform = 'translateY(-50%)';
+}
+window.addEventListener('resize', positionSidebars);
+
+// ═══════════════════════════════════════════════
+//  UNIT CONVERSION
+// ═══════════════════════════════════════════════
+function pxToMeters(px) {
+  if (calibrated && pxPerMeter) return px / pxPerMeter;
+  return px / window.innerWidth * 40; // fallback estimate
+}
+
+// ═══════════════════════════════════════════════
+//  STATS
+// ═══════════════════════════════════════════════
+function updateStats() {
+  document.getElementById('s-cones').textContent = cones.length;
+  if (cones.length < 2) {
+    document.getElementById('s-total').textContent   = '0 m';
+    document.getElementById('s-longest').textContent = '—';
+    document.getElementById('s-area').textContent    = '—';
+    return;
+  }
+  let total=0, longest=0;
+  for (let i=0; i<cones.length-1; i++) {
+    const d = pxToMeters(Math.hypot(cones[i+1].x-cones[i].x, cones[i+1].y-cones[i].y));
+    total += d; if (d>longest) longest=d;
+  }
+  document.getElementById('s-total').textContent   = total.toFixed(1)+' m';
+  document.getElementById('s-longest').textContent = longest.toFixed(1)+' m';
+  const xs=cones.map(c=>c.x), ys=cones.map(c=>c.y);
+  const bw=pxToMeters(Math.max(...xs)-Math.min(...xs));
+  const bh=pxToMeters(Math.max(...ys)-Math.min(...ys));
+  document.getElementById('s-area').textContent = (bw*bh).toFixed(0)+' m²';
+}
+
+function updateBadge() {
+  const n = cones.length;
+  document.getElementById('cone-badge').textContent = n + (n===1?' cone':' cones');
+}
+
+// ═══════════════════════════════════════════════
+//  DRILL TEMPLATES
+// ═══════════════════════════════════════════════
+// Templates defined as relative {rx, ry} positions in the "field zone"
+// Field zone = below horizon to above drawer
+const drills = {
+  't-drill': [
+    {rx:0.5, ry:0.82, c:'orange', l:'S'},
+    {rx:0.5, ry:0.50, c:'orange', l:'A'},
+    {rx:0.3, ry:0.50, c:'yellow', l:'B'},
+    {rx:0.7, ry:0.50, c:'yellow', l:'C'},
+  ],
+  'box': [
+    {rx:0.35, ry:0.78, c:'blue', l:'1'},
+    {rx:0.65, ry:0.78, c:'blue', l:'2'},
+    {rx:0.65, ry:0.45, c:'blue', l:'3'},
+    {rx:0.35, ry:0.45, c:'blue', l:'4'},
+  ],
+  'slalom': [
+    {rx:0.44, ry:0.82, c:'orange', l:'1'},
+    {rx:0.56, ry:0.70, c:'orange', l:'2'},
+    {rx:0.44, ry:0.58, c:'orange', l:'3'},
+    {rx:0.56, ry:0.46, c:'orange', l:'4'},
+    {rx:0.44, ry:0.34, c:'orange', l:'5'},
+    {rx:0.56, ry:0.22, c:'red',    l:'F'},
+  ],
+  'diamond': [
+    {rx:0.5,  ry:0.82, c:'yellow', l:'S'},
+    {rx:0.32, ry:0.56, c:'yellow', l:'L'},
+    {rx:0.68, ry:0.56, c:'yellow', l:'R'},
+    {rx:0.5,  ry:0.30, c:'red',    l:'F'},
+  ],
+  'shooting': [
+    {rx:0.5,  ry:0.80, c:'orange', l:'K'},
+    {rx:0.33, ry:0.58, c:'orange', l:'L'},
+    {rx:0.67, ry:0.58, c:'orange', l:'R'},
+    {rx:0.38, ry:0.36, c:'blue',   l:'P1'},
+    {rx:0.62, ry:0.36, c:'blue',   l:'P2'},
+  ],
+  'rondo': (() => {
+    const pts = [];
+    for (let i=0; i<8; i++) {
+      const a = (i/8)*Math.PI*2 - Math.PI/2;
+      pts.push({rx:0.5+0.19*Math.cos(a), ry:0.54+0.28*Math.sin(a), c:i%2?'yellow':'orange', l:(i+1).toString()});
+    }
+    return pts;
+  })()
+};
+
+document.querySelectorAll('.drill-card').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.drill-card').forEach(c=>c.classList.remove('selected'));
+    card.classList.add('selected');
+
+    const key = card.dataset.drill;
+    const tpl = drills[key];
+    if (!tpl) return;
+
+    clearAll();
+
+    const H = window.innerHeight;
+    const drawerH = document.getElementById('bottom-drawer').offsetHeight;
+    const hy = H * horizonY;
+    const fieldH = H - drawerH - hy;
+
+    tpl.forEach(p => {
+      const x = p.rx * window.innerWidth;
+      const y = hy + p.ry * fieldH;
+      placeCone(x, y, p.c, p.l);
+    });
+
+    showToast(`${card.querySelector('.drill-name').textContent} loaded`);
+  });
+});
+
+// ═══════════════════════════════════════════════
+//  EDIT MODE
+// ═══════════════════════════════════════════════
+document.getElementById('fab-edit').addEventListener('click', () => {
+  editMode = !editMode;
+  const btn = document.getElementById('fab-edit');
+  const hint = document.getElementById('edit-hint');
+  const layer = document.getElementById('touch-layer');
+
+  btn.classList.toggle('active-mode', editMode);
+  hint.style.display = editMode ? 'block' : 'none';
+  layer.style.pointerEvents = editMode ? 'none' : 'auto';
+
+  document.querySelectorAll('.cone-ar').forEach(el => {
+    el.classList.toggle('edit-mode', editMode);
+    el.style.pointerEvents = 'auto';
+  });
+
+  showToast(editMode ? '✏️ Edit mode on — drag or delete cones' : 'Edit mode off — tap to place cones');
+});
+
+// ═══════════════════════════════════════════════
+//  UNDO / CLEAR
+// ═══════════════════════════════════════════════
+document.getElementById('fab-undo').addEventListener('click', () => {
+  if (!cones.length) return;
+  removeCone(cones[cones.length-1].id);
+  showToast('Cone removed');
+});
+
+document.getElementById('fab-clear').addEventListener('click', () => {
+  if (!cones.length) return;
+  clearAll();
+  showToast('Field cleared');
+});
+
+function clearAll() {
+  [...cones].forEach(c => c.el.remove());
+  cones = [];
+  drawARFrame();
+  updateStats();
+  updateBadge();
+  document.querySelectorAll('.drill-card').forEach(c=>c.classList.remove('selected'));
+}
+
+// ═══════════════════════════════════════════════
+//  COLOR PICKER
+// ═══════════════════════════════════════════════
+document.querySelectorAll('.cone-pick').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.cone-pick').forEach(b=>b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedColor = btn.dataset.color;
+  });
+});
+
+// ═══════════════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════════════
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+  });
+});
+
+// Drawer drag to collapse/expand
+let drawerStartY = null;
+document.getElementById('drawer-handle').addEventListener('pointerdown', e => {
+  drawerStartY = e.clientY;
+});
+document.addEventListener('pointermove', e => {
+  if (drawerStartY === null) return;
+  const dy = e.clientY - drawerStartY;
+  const drawer = document.getElementById('bottom-drawer');
+  if (dy < -20) drawer.style.transform = 'translateY(-40px)';
+  if (dy > 20)  drawer.style.transform = 'translateY(0)';
+});
+document.addEventListener('pointerup', () => { drawerStartY = null; });
+
+// ═══════════════════════════════════════════════
+//  SAVE / SHARE
+// ═══════════════════════════════════════════════
+function renderSaved() {
+  const list = document.getElementById('saved-list');
+  list.innerHTML = '';
+  savedSessions.forEach(s => {
+    const div = document.createElement('div');
+    div.className = 'saved-item';
+    div.innerHTML = `<div><div class="si-name">${s.name}</div><div class="si-meta">${s.cones} cones · ${s.drill} · ${s.date}</div></div><span class="si-load">Load →</span>`;
+    div.addEventListener('click', () => showToast(`"${s.name}" loaded`));
+    list.appendChild(div);
+  });
+}
+
+document.getElementById('btn-save').addEventListener('click', () => {
+  const name = document.getElementById('sname').value.trim() || 'Session';
+  const active = document.querySelector('.drill-card.selected');
+  const drill = active ? active.querySelector('.drill-name').textContent : 'Custom';
+  const now = new Date();
+  const date = now.toLocaleDateString('en-AU',{weekday:'short',day:'2-digit',month:'short'});
+  savedSessions.unshift({name, cones:cones.length, drill, date});
+  renderSaved();
+  showToast(`"${name}" saved`);
+});
+
+document.getElementById('btn-share').addEventListener('click', () => {
+  const name = document.getElementById('sname').value.trim() || 'CoachAR Session';
+  const text = `${name} — ${cones.length} cones placed. Drill: ${document.querySelector('.drill-card.selected')?.querySelector('.drill-name')?.textContent||'Custom'}`;
+  if (navigator.share) {
+    navigator.share({title:'CoachAR', text}).catch(()=>{});
+  } else {
+    navigator.clipboard.writeText(text).then(()=>showToast('Copied to clipboard')).catch(()=>showToast('Share unavailable'));
+  }
+});
+
+// ═══════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+// ═══════════════════════════════════════════════
+//  ORIENTATION / RESIZE
+// ═══════════════════════════════════════════════
+window.addEventListener('resize', () => {
+  resizeCanvas();
+  drawARFrame();
+  positionSidebars();
+});
+
+renderSaved();
+</script>
+</body>
+</html>
